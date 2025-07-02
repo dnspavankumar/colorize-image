@@ -1,0 +1,9 @@
+torch
+scikit-image
+numpy
+matplotlib
+argparse
+Pillow
+Flask
+ipython
+waitress
