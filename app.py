@@ -23,9 +23,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-with app.app_context():
-    db.create_all()
-
 class ImageRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(120), nullable=False)
@@ -112,6 +109,8 @@ def health():
     return "ok", 200
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     port = int(os.environ.get("PORT", 10000))
     from waitress import serve
     serve(app, host="0.0.0.0", port=port)
