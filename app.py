@@ -23,6 +23,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+with app.app_context():
+    db.create_all()
+
 class ImageRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(120), nullable=False)
@@ -67,10 +70,6 @@ def cleanup_old_files():
             pass
         db.session.delete(record)
     db.session.commit()
-
-@app.before_first_request
-def create_tables():
-    db.create_all()
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
