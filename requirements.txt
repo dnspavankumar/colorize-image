@@ -7,3 +7,4 @@ Pillow
 Flask
 ipython
 waitress
+flask_sqlalchemy

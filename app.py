@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort
 from werkzeug.utils import secure_filename
 import torch
 import colorizers
@@ -7,6 +7,8 @@ import numpy as np
 import skimage.color as color
 import skimage.io as io
 import skimage.transform
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
 
 UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'outputs'
@@ -16,6 +18,16 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB upload limit
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///colorize.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+class ImageRecord(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(120), nullable=False)
+    upload_time = db.Column(db.DateTime, default=datetime.utcnow)
+    output = db.Column(db.Boolean, default=False)  # True if in outputs folder
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
@@ -43,9 +55,27 @@ def colorize_image(input_path, output_path):
     img_rgb_out = np.clip(color.lab2rgb(img_lab_out), 0, 1)
     io.imsave(output_path, (img_rgb_out*255).astype(np.uint8))
 
+def cleanup_old_files():
+    expire_time = datetime.utcnow() - timedelta(hours=1)
+    old_records = ImageRecord.query.filter(ImageRecord.upload_time < expire_time).all()
+    for record in old_records:
+        folder = OUTPUT_FOLDER if record.output else UPLOAD_FOLDER
+        file_path = os.path.join(folder, record.filename)
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
+        db.session.delete(record)
+    db.session.commit()
+
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
+        cleanup_old_files()
         if 'file' not in request.files:
             return redirect(request.url)
         file = request.files['file']
@@ -56,7 +86,13 @@ def index():
             input_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             output_path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
             file.save(input_path)
+            # Save upload record
+            db.session.add(ImageRecord(filename=filename, upload_time=datetime.utcnow(), output=False))
+            db.session.commit()
             colorize_image(input_path, output_path)
+            # Save output record
+            db.session.add(ImageRecord(filename=filename, upload_time=datetime.utcnow(), output=True))
+            db.session.commit()
             return redirect(url_for('result', filename=filename))
     return render_template('index.html')
 
@@ -66,7 +102,10 @@ def result(filename):
 
 @app.route('/outputs/<filename>')
 def output_file(filename):
-    return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
+    record = ImageRecord.query.filter_by(filename=filename, output=True).first()
+    if not record:
+        abort(404)
+    return send_from_directory(app.config['OUTPUT_FOLDER'], filename, as_attachment=True)
 
 # Minimal health check route for Render
 @app.route('/health')
