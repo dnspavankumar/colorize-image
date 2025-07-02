@@ -68,8 +68,13 @@ def result(filename):
 def output_file(filename):
     return send_from_directory(app.config['OUTPUT_FOLDER'], filename)
 
+# Minimal health check route for Render
+@app.route('/health')
+def health():
+    return "ok", 200
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))  # Render typically uses 10000
+    port = int(os.environ.get("PORT", 10000))
     from waitress import serve
     serve(app, host="0.0.0.0", port=port)
     # For local development, you can use:
