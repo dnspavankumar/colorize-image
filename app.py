@@ -32,17 +32,20 @@ class ImageRecord(db.Model):
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+# Load the colorizer model once at startup
+print("Loading model...")
+try:
+    colorizer = colorizers.eccv16().eval()
+    print("Model loaded successfully.")
+except Exception as e:
+    print(f"Error loading model: {e}")
+    raise
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def colorize_image(input_path, output_path):
-    try:
-        print("Loading model...")
-        colorizer = colorizers.eccv16().eval()
-        print("Model loaded successfully.")
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        raise
+    # Use the preloaded colorizer
     img = io.imread(input_path)
     if img.ndim == 2:
         img = np.stack([img]*3, axis=-1)
