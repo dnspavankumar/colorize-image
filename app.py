@@ -116,6 +116,6 @@ if __name__ == '__main__':
         print("Database created.")
     port = int(os.environ.get("PORT", 10000))
     print(f"About to start server on port {port}")
-    # Temporarily use Flask's built-in server for debugging
-    app.run(host="0.0.0.0", port=port, debug=True)
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=port)
     print("Server started.") 
