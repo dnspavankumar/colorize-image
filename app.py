@@ -109,10 +109,13 @@ def health():
     return "ok", 200
 
 if __name__ == '__main__':
+    print("Starting app...")
     with app.app_context():
+        print("Creating database...")
         db.create_all()
+        print("Database created.")
     port = int(os.environ.get("PORT", 10000))
-    from waitress import serve
-    serve(app, host="0.0.0.0", port=port)
-    # For local development, you can use:
-    # app.run(host="0.0.0.0", port=port, debug=True) 
+    print(f"About to start server on port {port}")
+    # Temporarily use Flask's built-in server for debugging
+    app.run(host="0.0.0.0", port=port, debug=True)
+    print("Server started.") 
