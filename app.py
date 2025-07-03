@@ -36,7 +36,13 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def colorize_image(input_path, output_path):
-    colorizer = colorizers.eccv16().eval()
+    try:
+        print("Loading model...")
+        colorizer = colorizers.eccv16().eval()
+        print("Model loaded successfully.")
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        raise
     img = io.imread(input_path)
     if img.ndim == 2:
         img = np.stack([img]*3, axis=-1)
